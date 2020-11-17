@@ -2,7 +2,7 @@
   "profiles": {
     "TerraFX.Samples": {
       "commandName": "Project",
-      "commandLineArgs": "all",
+      "commandLineArgs": "D3D12.Vrg -windowSize 655 401 -windowLocation 100 100",
       "nativeDebugging": true
     }
   }

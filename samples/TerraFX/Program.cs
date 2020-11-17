@@ -54,6 +54,9 @@ namespace TerraFX.Samples
             new HelloSierpinskiQuad("D3D12.HelloSierpinskiQuad", 6, s_graphicsProviderD3D12),
             new HelloSierpinskiQuad("Vulkan.HelloSierpinskiQuad", 6, s_graphicsProviderVulkan),
 
+            new Vrg("D3D12.Vrg", s_graphicsProviderD3D12),
+            new Vrg("Vulkan.Vrg", s_graphicsProviderVulkan),
+
             new EnumerateAudioAdapters("PulseAudio.EnumerateAudioAdapters.Sync", false, s_audioProviderPulseAudio),
             new EnumerateAudioAdapters("PulseAudio.EnumerateAudioAdapters.Async", true, s_audioProviderPulseAudio),
 
