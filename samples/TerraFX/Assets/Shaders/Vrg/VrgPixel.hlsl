@@ -14,7 +14,9 @@ float4 main(PSInput input) : SV_Target
         // get and apply the gray level intensitiy from the single value float texture
         float3 uvw = float3(input.uvw[0], input.uvw[1], (input.uvw[2] + i * 0.01) % 1.0);
         float4 texel = textureInput.Sample(samplerInput, uvw);
-        float4 color = texel[0] * float4(1, 1, 1, 1);
+        float voxel = texel[0];
+        if (voxel < 0.9) voxel = 0;
+        float4 color = voxel * float4(1, 1, 1, 1);
         r = r * a + color[0] * (1 - a);
         g = g * a + color[1] * (1 - a);
         b = b * a + color[2] * (1 - a);

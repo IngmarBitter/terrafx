@@ -77,14 +77,15 @@ namespace TerraFX.Samples.Graphics
             var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
             var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
 
-            var translationSpeed = 0.01f;
+            var translationSpeed = 0.001f;
 
-            var dydz = _texturePosition;
+            var dz = _texturePosition;
             {
-                dydz += (float)(translationSpeed * delta.TotalSeconds);
-                dydz %= 1.0f;
+                dz += (float)(translationSpeed * delta.TotalSeconds);
+                dz %= 1.0f;
             }
-            _texturePosition = dydz;
+            _texturePosition = dz;
+            var y = scaleY * dz;
 
             var constantBufferRegion = _quadPrimitive.InputResourceRegions[1];
             var constantBuffer = _constantBuffer;
@@ -94,7 +95,7 @@ namespace TerraFX.Samples.Graphics
             pConstantBuffer[0] = new Matrix4x4(
                 new Vector4(scaleX, 0.0f, 0.0f, 0f),      
                 new Vector4(0.0f, scaleY, 0.0f, 0f), 
-                new Vector4(0.0f, 0.0f, scaleZ, 0f),    
+                new Vector4(0.0f, 0.0f, scaleZ, dz),    
                 new Vector4(0.0f, 0.0f, 0.0f, 1.0f)
             );
 
@@ -176,7 +177,15 @@ namespace TerraFX.Samples.Graphics
                 for (uint n = 0; n < texturePixels; n++)
                 {
                     var voxel = _params.Texels[n];
-                    var texel = (U32)(((I32)voxel) - (I32)I16.MinValue);
+                    var value01 = voxel + 1000f;
+                    if (value01 < 0)
+                    {
+                        value01 = 0;
+                    }
+
+                    value01 /= 3000;
+                    value01 = Sigmoid0To1WithCenterAndWidth(value01, 0.5f, 0.5f);
+                    var texel = (U32)(255 * value01);
                     pTextureData[n] = texel;
                 }
 
@@ -184,6 +193,12 @@ namespace TerraFX.Samples.Graphics
                 graphicsContext.Copy(texture3D, textureStagingBuffer);
 
                 return texture3DRegion;
+
+                static F32 Sigmoid0To1WithCenterAndWidth(F32 x0to1, F32 center0to1, F32 width0to1)
+                {
+                    var mappedValue = 1.0f / (1 + MathF.Pow(1.5f / width0to1, -10 * (x0to1 - center0to1)));
+                    return mappedValue;
+                }
             }
 
             static GraphicsMemoryRegion<GraphicsResource> CreateVertexBufferRegion(GraphicsContext graphicsContext, GraphicsBuffer vertexBuffer, GraphicsBuffer vertexStagingBuffer, float aspectRatio)

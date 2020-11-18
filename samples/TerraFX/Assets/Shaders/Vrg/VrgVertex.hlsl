@@ -22,7 +22,7 @@ PSInput main(VSInput input)
     // the texture coordinates are animated to have the rising smoke visual effect
     v4 = mul(v4, primitiveTransform);
     v4 = mul(v4, frameTransform);
-    output.uvw = v4;
- 
+    output.uvw = float3(v4[0], v4[1], v4[2]);
+
     return output;
 }
