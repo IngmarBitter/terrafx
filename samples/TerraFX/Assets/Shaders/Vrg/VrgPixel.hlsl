@@ -15,8 +15,6 @@ float4 main(PSInput input) : SV_Target
         float3 uvw = float3(input.uvw[0], input.uvw[1], (input.uvw[2] + i * 0.01) % 1.0);
         float4 texel = textureInput.Sample(samplerInput, uvw);
         float4 color = texel[0] * float4(1, 1, 1, 1);
-        float4 scale = input.scale;
-        color = color * scale * scale * 0.5;
         r = r * a + color[0] * (1 - a);
         g = g * a + color[1] * (1 - a);
         b = b * a + color[2] * (1 - a);
@@ -25,3 +23,4 @@ float4 main(PSInput input) : SV_Target
     float4 accumulatedColor = float4(r,g,b,a);
     return accumulatedColor;
 }
+

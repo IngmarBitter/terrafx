@@ -5,6 +5,18 @@ using TerraFX.Graphics;
 using TerraFX.Numerics;
 using static TerraFX.Utilities.InteropUtilities;
 
+using Ptr = System.IntPtr;
+using U16 = System.UInt16;
+using U32 = System.UInt32;
+using I64 = System.Int64;
+using I16 = System.Int16;
+using F32 = System.Single;
+using U8 = System.Byte;
+using U64 = System.UInt64;
+using I8 = System.Char;
+using I32 = System.Int32;
+using F64 = System.Double;
+
 namespace TerraFX.Samples.Graphics
 {
     public sealed class Vrg : HelloWindow
@@ -14,10 +26,12 @@ namespace TerraFX.Samples.Graphics
         private GraphicsBuffer _indexBuffer = null!;
         private GraphicsBuffer _vertexBuffer = null!;
         private float _texturePosition;
+        private RenderParams _params;
 
         public Vrg(string name, params Assembly[] compositionAssemblies)
             : base(name, compositionAssemblies)
         {
+            _params = new RenderParams("D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.161,161,132.1,1,1.linear");
         }
 
         public override void Cleanup()
@@ -40,11 +54,10 @@ namespace TerraFX.Samples.Graphics
 
             var graphicsDevice = GraphicsDevice;
             var currentGraphicsContext = graphicsDevice.CurrentContext;
-            var textureSize = 4 * 64*64*64;
 
             using var vertexStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
             using var indexStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
-            using var textureStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, (ulong)textureSize);
+            using var textureStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 8 * _params.TexSize);
 
             _constantBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Constant, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
             _indexBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Index, GraphicsResourceCpuAccess.GpuOnly, 64 * 1024);
@@ -60,11 +73,15 @@ namespace TerraFX.Samples.Graphics
 
         protected override unsafe void Update(TimeSpan delta)
         {
-            const float TranslationSpeed = 0.05f;
+            var scaleX = (_params.TexDims[0] - 1f) / _params.TexDims[0];
+            var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
+            var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
+
+            var translationSpeed = 0.01f;
 
             var dydz = _texturePosition;
             {
-                dydz += (float)(TranslationSpeed * delta.TotalSeconds);
+                dydz += (float)(translationSpeed * delta.TotalSeconds);
                 dydz %= 1.0f;
             }
             _texturePosition = dydz;
@@ -75,9 +92,9 @@ namespace TerraFX.Samples.Graphics
 
             // Shaders take transposed matrices, so we want to set X.W
             pConstantBuffer[0] = new Matrix4x4(
-                new Vector4(0.5f, 0.0f, 0.0f, 0.5f),      // *0.5f and +0.5f since the input vertex coordinates are in range [-1, 1]  but output texture coordinates needs to be [0, 1]
-                new Vector4(0.0f, 0.5f, 0.0f, 0.5f - dydz), // *0.5f and +0.5f as above, -dydz to slide the view of the texture vertically each frame
-                new Vector4(0.0f, 0.0f, 0.5f, dydz / 5.0f), // +dydz to slide the start of the compositing ray in depth each frame
+                new Vector4(scaleX, 0.0f, 0.0f, 0f),      
+                new Vector4(0.0f, scaleY, 0.0f, 0f), 
+                new Vector4(0.0f, 0.0f, scaleZ, 0f),    
                 new Vector4(0.0f, 0.0f, 0.0f, 1.0f)
             );
 
@@ -146,54 +163,21 @@ namespace TerraFX.Samples.Graphics
 
             GraphicsMemoryRegion<GraphicsResource> CreateTexture3DRegion(GraphicsContext graphicsContext, GraphicsBuffer textureStagingBuffer)
             {
-                uint textureWidth = 64;
-                uint textureHeight = 64;
-                ushort textureDepth = 64;
-                var textureDz = textureWidth * textureHeight;
-                var texturePixels = textureDz * textureDepth;
+                var texturePixels = _params.TexSize;
+                var textureSize = texturePixels * 4;
+                var textureWidth = _params.TexDims[0];
+                var textureHeight = _params.TexDims[1];
+                var textureDepth = _params.TexDims[2];
 
-                var texture3D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.ThreeDimensional, GraphicsResourceCpuAccess.None, textureWidth, textureHeight, textureDepth, texelFormat: TexelFormat.R8G8B8A8_UNORM);
+                var texture3D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.ThreeDimensional, GraphicsResourceCpuAccess.None, textureWidth, textureHeight, (ushort)textureDepth, texelFormat: TexelFormat.R8G8B8A8_UNORM);
                 var texture3DRegion = texture3D.Allocate(texture3D.Size, alignment: 4);
                 var pTextureData = textureStagingBuffer.Map<uint>(in texture3DRegion);
 
-                var random = new Random(Seed: 1);
-
-                var isOnBlurring = true;
-                // start with random speckles
                 for (uint n = 0; n < texturePixels; n++)
                 {
-                    // convert n to indices
-                    float x = n % textureWidth;
-                    float y = n % textureDz / textureWidth;
-                    float z = n / textureDz;
-
-                    // convert indices to fractions in the range [0, 1)
-                    x /= textureWidth;
-                    y /= textureHeight;
-                    z /= textureHeight;
-
-                    // make x,z relative to texture center
-                    x -= 0.5f;
-                    z -= 0.5f;
-
-                    // get radius from center, clamped to 0.5
-                    var radius = MathF.Abs(x); // MathF.Sqrt(x * x + z * z);
-                    if (radius > 0.5f)
-                    {
-                        radius = 0.5f;
-                    }
-
-                    // scale as 1 in center, tapering off to the edge
-                    var scale = 2 * MathF.Abs(0.5f - radius);
-
-                    // random value scaled by the above
-                    var rand = (float)random.NextDouble();
-                    if (isOnBlurring && (rand < 0.99))
-                    {
-                        rand = 0;
-                    }
-                    uint value = (byte)(rand * scale * 255);
-                    pTextureData[n] = (uint)(value | (value << 8) | (value << 16) | (value << 24));
+                    var voxel = _params.Texels[n];
+                    var texel = (U32)(((I32)voxel) - (I32)I16.MinValue);
+                    pTextureData[n] = texel;
                 }
 
                 textureStagingBuffer.UnmapAndWrite(in texture3DRegion);
@@ -233,6 +217,27 @@ namespace TerraFX.Samples.Graphics
                 vertexStagingBuffer.UnmapAndWrite(in vertexBufferRegion);
                 return vertexBufferRegion;
             }
+
+                //float r = 0.99f;
+                //var a = new Texture3DVertex {                  //  
+                //    Position = new Vector3(-r, r, 0.5f),       //   y          in this setup 
+                //    UVW = new Vector3(0, 1, 0f),               //   ^     z    the origin o
+                //};                                             //   |   /      is in the middle
+                //                                               //   | /        of the rendered scene
+                //var b = new Texture3DVertex {                  //   o------>x
+                //    Position = new Vector3(r, r, 0.5f),        //  
+                //    UVW = new Vector3(1, 1, 0f),               //   a ----- b
+                //};                                             //   | \     |
+                //                                               //   |   \   |
+                //var c = new Texture3DVertex {                  //   |     \ |
+                //    Position = new Vector3(r, -r, 0.5f),       //   d-------c
+                //    UVW = new Vector3(1, 0, 0f),               //  
+                //};                                             //   0 ----- 1  
+                //                                               //   | \     |  
+                //var d = new Texture3DVertex {                  //   |   \   |  
+                //    Position = new Vector3(-r, -r, 0.5f),      //   |     \ |  
+                //    UVW = new Vector3(0, 0, 0f),               //   3-------2  
+                //};                                             //
 
             GraphicsPipeline CreateGraphicsPipeline(GraphicsDevice graphicsDevice, string shaderName, string vertexShaderEntryPoint, string pixelShaderEntryPoint)
             {
