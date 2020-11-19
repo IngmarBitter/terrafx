@@ -77,7 +77,7 @@ namespace TerraFX.Samples.Graphics
             var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
             var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
 
-            var translationSpeed = 0.01f;
+            var translationSpeed = 0.1f;
 
             var dz = _texturePosition;
             {
@@ -205,53 +205,33 @@ namespace TerraFX.Samples.Graphics
                 var vertexBufferRegion = vertexBuffer.Allocate(SizeOf<Texture3DVertex>() * 4, alignment: 16);
                 var pVertexBuffer = vertexStagingBuffer.Map<Texture3DVertex>(in vertexBufferRegion);
 
-                var y = 1.0f;
-                var x = y / aspectRatio;
-
-                pVertexBuffer[0] = new Texture3DVertex {             //
-                    Position = new Vector3(-x, y, 0.0f),             //   y          in this setup
-                    UVW = new Vector3(0, 1, 0),                      //   ^     z    the origin o
-                };                                                   //   |   /      is in the middle
-                                                                     //   | /        of the rendered scene
-                pVertexBuffer[1] = new Texture3DVertex {             //   o------>x
-                    Position = new Vector3(x, y, 0.0f),              //
-                    UVW = new Vector3(1, 1, 0),                      //   0 ----- 1
-                };                                                   //   | \     |
-                                                                     //   |   \   |
-                pVertexBuffer[2] = new Texture3DVertex {             //   |     \ |
-                    Position = new Vector3(x, -y, 0.0f),             //   3-------2
-                    UVW = new Vector3(1, 0, 0),                      //
-                };
-
-                pVertexBuffer[3] = new Texture3DVertex {
-                    Position = new Vector3(-x, -y, 0),
-                    UVW = new Vector3(0, 0, 0),
-                };
+                var r = 0.99f;
+                var a = r / aspectRatio;
+                var t = 1f;
+                pVertexBuffer[0] = new Texture3DVertex {       //  
+                    Position = new Vector3(-a, r, 0.5f),       //   y          Vertex position space: 
+                    UVW = new Vector3(0, 0, 0),                //   ^     z    in this setup the origin o is
+                };                                             //   |   /      in the middle
+                                                               //   | /        of the rendered scene
+                pVertexBuffer[1] = new Texture3DVertex {       //   o------>x
+                    Position = new Vector3(a, r, 0.5f),        //  
+                    UVW = new Vector3(t, 0, 0),                //   o------>x  Texture coordinate space:
+                };                                             //   | \        the origin o is 
+                                                               //   |   \      at the top left corner
+                pVertexBuffer[2] = new Texture3DVertex {       //   v     z    and at the beginning of the texture memory
+                    Position = new Vector3(a, -r, 0.5f),       //   y          
+                    UVW = new Vector3(t, t, 0),                //  
+                };                                             //   0 ----- 1  
+                                                               //   | \     |  
+                pVertexBuffer[3] = new Texture3DVertex {       //   |   \   |  
+                    Position = new Vector3(-a, -r, 0.5f),      //   |     \ |  
+                    UVW = new Vector3(0, t, 0),                //   3-------2  
+                };                                             //
 
                 vertexStagingBuffer.UnmapAndWrite(in vertexBufferRegion);
                 return vertexBufferRegion;
             }
 
-                //float r = 0.99f;
-                //var a = new Texture3DVertex {                  //  
-                //    Position = new Vector3(-r, r, 0.5f),       //   y          in this setup 
-                //    UVW = new Vector3(0, 1, 0f),               //   ^     z    the origin o
-                //};                                             //   |   /      is in the middle
-                //                                               //   | /        of the rendered scene
-                //var b = new Texture3DVertex {                  //   o------>x
-                //    Position = new Vector3(r, r, 0.5f),        //  
-                //    UVW = new Vector3(1, 1, 0f),               //   a ----- b
-                //};                                             //   | \     |
-                //                                               //   |   \   |
-                //var c = new Texture3DVertex {                  //   |     \ |
-                //    Position = new Vector3(r, -r, 0.5f),       //   d-------c
-                //    UVW = new Vector3(1, 0, 0f),               //  
-                //};                                             //   0 ----- 1  
-                //                                               //   | \     |  
-                //var d = new Texture3DVertex {                  //   |   \   |  
-                //    Position = new Vector3(-r, -r, 0.5f),      //   |     \ |  
-                //    UVW = new Vector3(0, 0, 0f),               //   3-------2  
-                //};                                             //
 
             GraphicsPipeline CreateGraphicsPipeline(GraphicsDevice graphicsDevice, string shaderName, string vertexShaderEntryPoint, string pixelShaderEntryPoint)
             {

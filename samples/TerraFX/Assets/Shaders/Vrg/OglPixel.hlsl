@@ -219,10 +219,10 @@ void main()
                         normal = normalize(normal);
 
                         // Shade is computed by Lambertian shading model 
-                        float DiffuseColor = saturate(dot(normal, vLight));
+                        float diffuseColor = saturate(dot(normal, vLight));
 
                         // Lambertian term + Ambient term 
-                        shade = (0.75 * DiffuseColor + 0.25) * LUT.rgb;
+                        shade = (0.75 * diffuseColor + 0.25) * LUT.rgb;
 
                         // accumulate color 
                         float alpha = saturate(1.0 - LUT.a);

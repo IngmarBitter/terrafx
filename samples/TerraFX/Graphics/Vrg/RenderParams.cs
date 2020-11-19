@@ -47,12 +47,15 @@ public class RenderParams
                 spacingMm = new Vector3(x, y, z);
             }
             voxels = new I16[256 * 256 * 256]; // dims[0] * dims[1] * dims[2]];
+
             var xA = (dims[0] / 2) - 127;
             var xB = (dims[0] / 2) + 128;
             var yA = (dims[1] / 2) - 127;
             var yB = (dims[1] / 2) + 128;
             var zA = (dims[2] / 2) - 127 + 4; //shift up FOV
             var zB = (dims[2] / 2) + 128 + 4;
+
+            // write the XYZ=LPH SliceStack data into the XYZ=LFP texture (y and z swap position, y also swaps direction)
             for (var z = 0; z < dims[2]; z++)
             {
                 for (var y = 0; y < dims[1]; y++)
@@ -64,7 +67,13 @@ public class RenderParams
                             y >= yA && y <= yB &&
                             z >= zA && z <= zB)
                         {
-                            voxels[x - xA + (256 * (z - zA)) + (256 * 256 * (y - yA))] = voxel;
+                            var coordSum = x - xA + (y - yA) + (z - zA);
+                            if (coordSum < 20)
+                            {
+                                voxel = (I16)(300 * coordSum);
+                            }
+
+                            voxels[x - xA + (256 * (255 - (z - zA))) + (256 * 256 * (y - yA))] = voxel;
                         }
                     }
                 }

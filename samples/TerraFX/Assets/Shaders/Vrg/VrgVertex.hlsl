@@ -19,7 +19,7 @@ PSInput main(VSInput input)
 
     output.uvw = input.uvw;
 
-    v4 = float4(input.uvw, 1.0f);
+    v4 = float4(0,0,0,1);
     v4 = mul(v4, primitiveTransform);
     v4 = mul(v4, frameTransform);
     output.scale = v4[2];
