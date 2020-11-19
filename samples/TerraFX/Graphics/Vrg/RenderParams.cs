@@ -46,20 +46,22 @@ public class RenderParams
                 var z = binaryReader.ReadSingle();
                 spacingMm = new Vector3(x, y, z);
             }
-            voxels = new I16[dims[0] * dims[1] * dims[2]];
-            var i = 0;
+            voxels = new I16[256 * 256 * 256]; // dims[0] * dims[1] * dims[2]];
             for (var z = 0; z < dims[2]; z++)
             {
                 for (var y = 0; y < dims[1]; y++)
                 {
                     for (var x = 0; x < dims[0]; x++)
                     {
-                        voxels[i++] = binaryReader.ReadInt16();
+                        voxels[x + (256 * z) + (256 * 256 * y)] = binaryReader.ReadInt16();
                     }
                 }
             }
 
             binaryReader.Close();
+            dims[0] = 256;
+            dims[1] = 256;
+            dims[2] = 256;
         }
         return (dims, spacingMm, voxels);
     }

@@ -77,7 +77,7 @@ namespace TerraFX.Samples.Graphics
             var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
             var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
 
-            var translationSpeed = 0.001f;
+            var translationSpeed = 0.1f;
 
             var dz = _texturePosition;
             {
@@ -85,7 +85,6 @@ namespace TerraFX.Samples.Graphics
                 dz %= 1.0f;
             }
             _texturePosition = dz;
-            var y = scaleY * dz;
 
             var constantBufferRegion = _quadPrimitive.InputResourceRegions[1];
             var constantBuffer = _constantBuffer;
@@ -211,22 +210,22 @@ namespace TerraFX.Samples.Graphics
 
                 pVertexBuffer[0] = new Texture3DVertex {             //
                     Position = new Vector3(-x, y, 0.0f),             //   y          in this setup
-                    UVW = new Vector3(0, 0, 0),                      //   ^     z    the origin o
+                    UVW = new Vector3(0, 1, 0),                      //   ^     z    the origin o
                 };                                                   //   |   /      is in the middle
                                                                      //   | /        of the rendered scene
                 pVertexBuffer[1] = new Texture3DVertex {             //   o------>x
                     Position = new Vector3(x, y, 0.0f),              //
-                    UVW = new Vector3(1, 0, 0),                      //   0 ----- 1
+                    UVW = new Vector3(1, 1, 0),                      //   0 ----- 1
                 };                                                   //   | \     |
                                                                      //   |   \   |
                 pVertexBuffer[2] = new Texture3DVertex {             //   |     \ |
                     Position = new Vector3(x, -y, 0.0f),             //   3-------2
-                    UVW = new Vector3(1, 1, 0),                      //
+                    UVW = new Vector3(1, 0, 0),                      //
                 };
 
                 pVertexBuffer[3] = new Texture3DVertex {
                     Position = new Vector3(-x, -y, 0),
-                    UVW = new Vector3(0, 1, 0),
+                    UVW = new Vector3(0, 0, 0),
                 };
 
                 vertexStagingBuffer.UnmapAndWrite(in vertexBufferRegion);

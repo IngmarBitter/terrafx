@@ -15,7 +15,7 @@ float4 main(PSInput input) : SV_Target
         float3 uvw = float3(input.uvw[0], input.uvw[1], (input.uvw[2] + i * 0.01) % 1.0);
         float4 texel = textureInput.Sample(samplerInput, uvw);
         float voxel = texel[0];
-        if (voxel < 0.9) voxel = 0;
+        if (voxel < input.scale) voxel = 0;
         float4 color = voxel * float4(1, 1, 1, 1);
         r = r * a + color[0] * (1 - a);
         g = g * a + color[1] * (1 - a);
