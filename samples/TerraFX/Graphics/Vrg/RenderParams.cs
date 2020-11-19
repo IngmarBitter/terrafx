@@ -16,7 +16,7 @@ using System.IO;
 
 public class RenderParams
 {
-    private readonly U32[]   _texDims;
+    private readonly U32[] _texDims;
     private readonly Vector3 _texSpacingMm;
     private readonly I16[] _texels;
 
@@ -27,7 +27,7 @@ public class RenderParams
 
     public RenderParams(string ctFilePathAndName)
     {
-        (_texDims , _texSpacingMm, _texels) = CtLoad(ctFilePathAndName);
+        (_texDims, _texSpacingMm, _texels) = CtLoad(ctFilePathAndName);
     }
     private (U32[] dims, Vector3 spacingMm, I16[] voxels) CtLoad(string filePathAndName)
     {
@@ -47,13 +47,25 @@ public class RenderParams
                 spacingMm = new Vector3(x, y, z);
             }
             voxels = new I16[256 * 256 * 256]; // dims[0] * dims[1] * dims[2]];
+            var xA = (dims[0] / 2) - 127;
+            var xB = (dims[0] / 2) + 128;
+            var yA = (dims[1] / 2) - 127;
+            var yB = (dims[1] / 2) + 128;
+            var zA = (dims[2] / 2) - 127 + 4; //shift up FOV
+            var zB = (dims[2] / 2) + 128 + 4;
             for (var z = 0; z < dims[2]; z++)
             {
                 for (var y = 0; y < dims[1]; y++)
                 {
                     for (var x = 0; x < dims[0]; x++)
                     {
-                        voxels[x + (256 * z) + (256 * 256 * y)] = binaryReader.ReadInt16();
+                        var voxel = binaryReader.ReadInt16();
+                        if (x >= xA && x <= xB &&
+                            y >= yA && y <= yB &&
+                            z >= zA && z <= zB)
+                        {
+                            voxels[x - xA + (256 * (z - zA)) + (256 * 256 * (y - yA))] = voxel;
+                        }
                     }
                 }
             }

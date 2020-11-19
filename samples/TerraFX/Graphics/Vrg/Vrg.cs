@@ -31,7 +31,7 @@ namespace TerraFX.Samples.Graphics
         public Vrg(string name, params Assembly[] compositionAssemblies)
             : base(name, compositionAssemblies)
         {
-            _params = new RenderParams("D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.161,161,132.1,1,1.linear");
+            _params = new RenderParams("D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.322,322,264.0.5,0.5,0.5.linear");
         }
 
         public override void Cleanup()
@@ -77,7 +77,7 @@ namespace TerraFX.Samples.Graphics
             var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
             var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
 
-            var translationSpeed = 0.1f;
+            var translationSpeed = 0.01f;
 
             var dz = _texturePosition;
             {
