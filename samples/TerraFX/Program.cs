@@ -67,7 +67,11 @@ namespace TerraFX.Samples
         {
             Environment.CurrentDirectory = Path.GetDirectoryName(Assembly.GetEntryAssembly()!.Location)!;
 
-            if ((args.Length == 0) || args.Any((arg) => Matches(arg, "?", "h", "help")))
+            if (args.Length == 0)
+            {
+                RunSamples(new string[] { "D3D12.Vrg -windowSize 655 401 -windowLocation 100 100" });
+            }
+            else if ((args.Length == 0) || args.Any((arg) => Matches(arg, "?", "h", "help")))
             {
                 PrintHelp();
             }

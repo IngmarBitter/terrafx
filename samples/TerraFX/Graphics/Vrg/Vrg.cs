@@ -95,9 +95,9 @@ namespace TerraFX.Samples.Graphics
 
             // Shaders take transposed matrices, so we want to set X.W
             pConstantBuffer[0] = new Matrix4x4(
-                new Vector4(scaleX, 0.0f, 0.0f, 0f),      
-                new Vector4(0.0f, scaleY, 0.0f, 0f), 
-                new Vector4(0.0f, 0.0f, scaleZ, dz),    
+                new Vector4(scaleX, 0.0f, 0.0f, 0f),
+                new Vector4(0.0f, scaleY, 0.0f, 0f),
+                new Vector4(0.0f, 0.0f, scaleZ, dz),
                 new Vector4(0.0f, 0.0f, 0.0f, 1.0f)
             );
 
@@ -154,13 +154,13 @@ namespace TerraFX.Samples.Graphics
 
                 // clockwise when looking at the triangle from the outside
 
-                pIndexBuffer[0] = 0; 
-                pIndexBuffer[1] = 1; 
-                pIndexBuffer[2] = 2; 
+                pIndexBuffer[0] = 0;
+                pIndexBuffer[1] = 1;
+                pIndexBuffer[2] = 2;
 
-                pIndexBuffer[3] = 0; 
-                pIndexBuffer[4] = 2; 
-                pIndexBuffer[5] = 3; 
+                pIndexBuffer[3] = 0;
+                pIndexBuffer[4] = 2;
+                pIndexBuffer[5] = 3;
 
                 indexStagingBuffer.UnmapAndWrite(in indexBufferRegion);
                 return indexBufferRegion;
@@ -176,11 +176,10 @@ namespace TerraFX.Samples.Graphics
                 var texture1DRegion = texture1D.Allocate(texture1D.Size, alignment: 4);
                 var pTextureData = textureStagingBuffer.Map<uint>(in texture1DRegion);
 
-                var x = (U32)(_params.IntensityToRgba.Length / 256);
                 for (uint n = 0; n < _params.IntensityToRgba.Length; n++)
                 {
                     var texel = _params.IntensityToRgba[n];
-                    pTextureData[VoxelI16toU8((I16)((I64)n + I16.MinValue))] = texel;
+                    pTextureData[n] = texel;
                     //pTextureData[n]
                     //    = 0 << 0       // r
                     //    | texel << 8   // g
@@ -207,7 +206,7 @@ namespace TerraFX.Samples.Graphics
 
                 for (uint n = 0; n < texturePixels; n++)
                 {
-                    var texel = VoxelI16toU8(_params.IntensityTexture3d[n]);
+                    U32 texel = _params.IntensityTexture3d[n];
                     pTextureData[n] = texel;
                 }
 
@@ -215,26 +214,6 @@ namespace TerraFX.Samples.Graphics
                 graphicsContext.Copy(texture3D, textureStagingBuffer);
 
                 return texture3DRegion;
-            }
-
-            static U32 VoxelI16toU8(I16 voxel)
-            {
-                var value01 = voxel + 1000f;
-                if (value01 < 0)
-                {
-                    value01 = 0;
-                }
-
-                value01 /= 3000;
-                value01 = Sigmoid0To1WithCenterAndWidth(value01, 0.5f, 0.5f);
-                var texel = (U32)(255 * value01);
-                return texel;
-            }
-
-            static F32 Sigmoid0To1WithCenterAndWidth(F32 x0to1, F32 center0to1, F32 width0to1)
-            {
-                var mappedValue = 1.0f / (1 + MathF.Pow(1.5f / width0to1, -10 * (x0to1 - center0to1)));
-                return mappedValue;
             }
 
             static GraphicsMemoryRegion<GraphicsResource> CreateVertexBufferRegion(GraphicsContext graphicsContext, GraphicsBuffer vertexBuffer, GraphicsBuffer vertexStagingBuffer, float aspectRatio)
@@ -247,7 +226,7 @@ namespace TerraFX.Samples.Graphics
                 var t = 1f;
                 pVertexBuffer[0] = new Texture3DVertex {       //  
                     Position = new Vector3(-a, r, 0.5f),       //   y          Vertex position space: 
-                    UVW = new Vector3(0, 0, 0),                //   ^     z    in this setup the origin o is
+                    UVW = new Vector3(0, 0, 0),                //   ^     z    the origin o is
                 };                                             //   |   /      in the middle
                                                                //   | /        of the rendered scene
                 pVertexBuffer[1] = new Texture3DVertex {       //   o------>x
