@@ -26,12 +26,14 @@ namespace TerraFX.Samples.Graphics
         private GraphicsBuffer _indexBuffer = null!;
         private GraphicsBuffer _vertexBuffer = null!;
         private float _texturePosition;
-        private RenderParams _params;
+        private readonly RenderParams _params;
 
         public Vrg(string name, params Assembly[] compositionAssemblies)
             : base(name, compositionAssemblies)
         {
-            _params = new RenderParams("D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.322,322,264.0.5,0.5,0.5.linear");
+            _params = new RenderParams(
+                "D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.322,322,264.0.5,0.5,0.5.linear",
+                "D:/projects/ClaroNav/Vrg/argbLut.CT_Bones_Dental.rgba");
         }
 
         public override void Cleanup()
@@ -54,10 +56,11 @@ namespace TerraFX.Samples.Graphics
 
             var graphicsDevice = GraphicsDevice;
             var currentGraphicsContext = graphicsDevice.CurrentContext;
+            var textureSize = (4 * (U64)256) + (4 * (U64)_params.IntensityTexture3d.Length);
 
             using var vertexStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
             using var indexStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
-            using var textureStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, 8 * _params.TexSize);
+            using var textureStagingBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Default, GraphicsResourceCpuAccess.CpuToGpu, textureSize);
 
             _constantBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Constant, GraphicsResourceCpuAccess.CpuToGpu, 64 * 1024);
             _indexBuffer = graphicsDevice.MemoryAllocator.CreateBuffer(GraphicsBufferKind.Index, GraphicsResourceCpuAccess.GpuOnly, 64 * 1024);
@@ -73,9 +76,9 @@ namespace TerraFX.Samples.Graphics
 
         protected override unsafe void Update(TimeSpan delta)
         {
-            var scaleX = (_params.TexDims[0] - 1f) / _params.TexDims[0];
-            var scaleY = (_params.TexDims[1] - 1f) / _params.TexDims[1];
-            var scaleZ = (_params.TexDims[2] - 1f) / _params.TexDims[2];
+            var scaleX = (_params.IntensityTexDims[0] - 1f) / _params.IntensityTexDims[0];
+            var scaleY = (_params.IntensityTexDims[1] - 1f) / _params.IntensityTexDims[1];
+            var scaleZ = (_params.IntensityTexDims[2] - 1f) / _params.IntensityTexDims[2];
 
             var translationSpeed = 0.1f;
 
@@ -124,11 +127,13 @@ namespace TerraFX.Samples.Graphics
             var indexBufferRegion = CreateIndexBufferRegion(graphicsContext, indexBuffer, indexStagingBuffer);
             graphicsContext.Copy(indexBuffer, indexStagingBuffer);
 
-            var inputResourceRegions = new GraphicsMemoryRegion<GraphicsResource>[3] {
+            var inputResourceRegions = new GraphicsMemoryRegion<GraphicsResource>[4] {
                 CreateConstantBufferRegion(graphicsContext, constantBuffer),
                 CreateConstantBufferRegion(graphicsContext, constantBuffer),
+                CreateTexture1DRegion(graphicsContext, textureStagingBuffer),
                 CreateTexture3DRegion(graphicsContext, textureStagingBuffer),
             };
+
             return graphicsDevice.CreatePrimitive(graphicsPipeline, vertexBufferRegion, SizeOf<Texture3DVertex>(), indexBufferRegion, SizeOf<ushort>(), inputResourceRegions);
 
             static GraphicsMemoryRegion<GraphicsResource> CreateConstantBufferRegion(GraphicsContext graphicsContext, GraphicsBuffer constantBuffer)
@@ -161,13 +166,40 @@ namespace TerraFX.Samples.Graphics
                 return indexBufferRegion;
             }
 
+            GraphicsMemoryRegion<GraphicsResource> CreateTexture1DRegion(GraphicsContext graphicsContext, GraphicsBuffer textureStagingBuffer)
+            {
+                var textureWidth = 256u; //_params.IntensityToRgba.Length;
+                var texturePixels = textureWidth;
+                var textureSize = texturePixels * 4;
+
+                var texture1D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.OneDimensional, GraphicsResourceCpuAccess.None, textureWidth, texelFormat: TexelFormat.R8G8B8A8_UNORM);
+                var texture1DRegion = texture1D.Allocate(texture1D.Size, alignment: 4);
+                var pTextureData = textureStagingBuffer.Map<uint>(in texture1DRegion);
+
+                var x = (U32)(_params.IntensityToRgba.Length / 256);
+                for (uint n = 0; n < _params.IntensityToRgba.Length; n++)
+                {
+                    var texel = _params.IntensityToRgba[n];
+                    pTextureData[VoxelI16toU8((I16)((I64)n + I16.MinValue))] = texel;
+                    //pTextureData[n]
+                    //    = 0 << 0       // r
+                    //    | texel << 8   // g
+                    //    | texel << 16  // b
+                    //    | texel << 24; // a
+                }
+                textureStagingBuffer.UnmapAndWrite(in texture1DRegion);
+                graphicsContext.Copy(texture1D, textureStagingBuffer);
+
+                return texture1DRegion;
+            }
+
             GraphicsMemoryRegion<GraphicsResource> CreateTexture3DRegion(GraphicsContext graphicsContext, GraphicsBuffer textureStagingBuffer)
             {
-                var texturePixels = _params.TexSize;
+                var texturePixels = (U32)_params.IntensityTexture3d.Length;
                 var textureSize = texturePixels * 4;
-                var textureWidth = _params.TexDims[0];
-                var textureHeight = _params.TexDims[1];
-                var textureDepth = _params.TexDims[2];
+                var textureWidth = _params.IntensityTexDims[0];
+                var textureHeight = _params.IntensityTexDims[1];
+                var textureDepth = _params.IntensityTexDims[2];
 
                 var texture3D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.ThreeDimensional, GraphicsResourceCpuAccess.None, textureWidth, textureHeight, (ushort)textureDepth, texelFormat: TexelFormat.R8G8B8A8_UNORM);
                 var texture3DRegion = texture3D.Allocate(texture3D.Size, alignment: 4);
@@ -175,16 +207,7 @@ namespace TerraFX.Samples.Graphics
 
                 for (uint n = 0; n < texturePixels; n++)
                 {
-                    var voxel = _params.Texels[n];
-                    var value01 = voxel + 1000f;
-                    if (value01 < 0)
-                    {
-                        value01 = 0;
-                    }
-
-                    value01 /= 3000;
-                    value01 = Sigmoid0To1WithCenterAndWidth(value01, 0.5f, 0.5f);
-                    var texel = (U32)(255 * value01);
+                    var texel = VoxelI16toU8(_params.IntensityTexture3d[n]);
                     pTextureData[n] = texel;
                 }
 
@@ -192,12 +215,26 @@ namespace TerraFX.Samples.Graphics
                 graphicsContext.Copy(texture3D, textureStagingBuffer);
 
                 return texture3DRegion;
+            }
 
-                static F32 Sigmoid0To1WithCenterAndWidth(F32 x0to1, F32 center0to1, F32 width0to1)
+            static U32 VoxelI16toU8(I16 voxel)
+            {
+                var value01 = voxel + 1000f;
+                if (value01 < 0)
                 {
-                    var mappedValue = 1.0f / (1 + MathF.Pow(1.5f / width0to1, -10 * (x0to1 - center0to1)));
-                    return mappedValue;
+                    value01 = 0;
                 }
+
+                value01 /= 3000;
+                value01 = Sigmoid0To1WithCenterAndWidth(value01, 0.5f, 0.5f);
+                var texel = (U32)(255 * value01);
+                return texel;
+            }
+
+            static F32 Sigmoid0To1WithCenterAndWidth(F32 x0to1, F32 center0to1, F32 width0to1)
+            {
+                var mappedValue = 1.0f / (1 + MathF.Pow(1.5f / width0to1, -10 * (x0to1 - center0to1)));
+                return mappedValue;
             }
 
             static GraphicsMemoryRegion<GraphicsResource> CreateVertexBufferRegion(GraphicsContext graphicsContext, GraphicsBuffer vertexBuffer, GraphicsBuffer vertexStagingBuffer, float aspectRatio)
@@ -232,7 +269,6 @@ namespace TerraFX.Samples.Graphics
                 return vertexBufferRegion;
             }
 
-
             GraphicsPipeline CreateGraphicsPipeline(GraphicsDevice graphicsDevice, string shaderName, string vertexShaderEntryPoint, string pixelShaderEntryPoint)
             {
                 var signature = CreateGraphicsPipelineSignature(graphicsDevice);
@@ -253,9 +289,10 @@ namespace TerraFX.Samples.Graphics
                     ),
                 };
 
-                var resources = new GraphicsPipelineResource[3] {
+                var resources = new GraphicsPipelineResource[4] {
                     new GraphicsPipelineResource(GraphicsPipelineResourceKind.ConstantBuffer, GraphicsShaderVisibility.Vertex),
                     new GraphicsPipelineResource(GraphicsPipelineResourceKind.ConstantBuffer, GraphicsShaderVisibility.Vertex),
+                    new GraphicsPipelineResource(GraphicsPipelineResourceKind.Texture, GraphicsShaderVisibility.Pixel),
                     new GraphicsPipelineResource(GraphicsPipelineResourceKind.Texture, GraphicsShaderVisibility.Pixel),
                 };
 

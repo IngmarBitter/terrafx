@@ -1,7 +1,9 @@
 #include "VrgTypes.hlsl"
 
-Texture3D textureInput : register(t0);
-SamplerState samplerInput : register(s0);
+Texture1D texture1dInput : register(t0);
+Texture3D texture3dInput : register(t1);
+SamplerState sampler1dInput : register(s0);
+SamplerState sampler3dInput : register(s1);
 
 float4 main(PSInput input) : SV_Target
 {
@@ -18,20 +20,26 @@ float4 main(PSInput input) : SV_Target
         float3 uvw = float3(input.uvw[0], input.uvw[1], (input.uvw[2] + i * stepSize) % 1.0);
 
         // sample from 3d texture
-        float4 texel = textureInput.SampleLevel(samplerInput, uvw, 0, 0);
+        float4 texel = texture3dInput.SampleLevel(sampler3dInput, uvw, 0, 0);
+
+        // lookup matching RGBA
+        //float4 sampleRgba = texture1dInput.SampleLevel(sampler1dInput, texel[0], 0, 0); // IB: reactivate this when multi texture allocation is fixed
+        float4 sampleRgba = float4(texel[0], texel[0], texel[0], texel[0]);
+        float3 sampleRgb = float3(sampleRgba[0], sampleRgba[1], sampleRgba[2]);
+        float sampleAlpha = sampleRgba[3];
 
         // get and apply the gray level intensitiy from the single value float texture
         float voxel = texel[0];
-        if (voxel > input.scale) {
+        if (voxel > input.scale && sampleAlpha > 0) {
 
             // gradient sample locations (y is flipped because geometry Y is up while texture Y is down)
             float gr = 1 / 256.0; // gradient sampling radius for (p)revious and (n)ext samples
-            float3 cp00 = uvw + float3(-gr, 0, 0); float gp00 = textureInput.SampleLevel(samplerInput, cp00, 0, 0)[0];
-            float3 cn00 = uvw + float3(+gr, 0, 0); float gn00 = textureInput.SampleLevel(samplerInput, cn00, 0, 0)[0];
-            float3 c0p0 = uvw + float3(0, +gr, 0); float g0p0 = textureInput.SampleLevel(samplerInput, c0p0, 0, 0)[0];
-            float3 c0n0 = uvw + float3(0, -gr, 0); float g0n0 = textureInput.SampleLevel(samplerInput, c0n0, 0, 0)[0];
-            float3 c00p = uvw + float3(0, 0, -gr); float g00p = textureInput.SampleLevel(samplerInput, c00p, 0, 0)[0];
-            float3 c00n = uvw + float3(0, 0, +gr); float g00n = textureInput.SampleLevel(samplerInput, c00n, 0, 0)[0];
+            float3 cp00 = uvw + float3(-gr, 0, 0); float gp00 = texture3dInput.SampleLevel(sampler3dInput, cp00, 0, 0)[0];
+            float3 cn00 = uvw + float3(+gr, 0, 0); float gn00 = texture3dInput.SampleLevel(sampler3dInput, cn00, 0, 0)[0];
+            float3 c0p0 = uvw + float3(0, +gr, 0); float g0p0 = texture3dInput.SampleLevel(sampler3dInput, c0p0, 0, 0)[0];
+            float3 c0n0 = uvw + float3(0, -gr, 0); float g0n0 = texture3dInput.SampleLevel(sampler3dInput, c0n0, 0, 0)[0];
+            float3 c00p = uvw + float3(0, 0, -gr); float g00p = texture3dInput.SampleLevel(sampler3dInput, c00p, 0, 0)[0];
+            float3 c00n = uvw + float3(0, 0, +gr); float g00n = texture3dInput.SampleLevel(sampler3dInput, c00n, 0, 0)[0];
             float3 gradient = float3(
                 gn00 - gp00,
                 g0n0 - g0p0,
@@ -46,10 +54,9 @@ float4 main(PSInput input) : SV_Target
                 float shade = ambientFraction + diffuseFraction * diffuseShade;
 
                 // sample color and alpha
-                float3 color = shade * voxel * float4(1, 1, 1, 1);
-                float alpha = voxel;
-                float trans = (1 - alpha);
-                rgb += color * transparency; // front to back compositing with alpha-premultiplied colors
+                float3 shadedColor = shade * sampleRgb;
+                float trans = (1 - sampleAlpha);
+                rgb += shadedColor * sampleAlpha * transparency; // front to back compositing with accumulation of alpha-premultiplied colors, but the new sample is not premultiplied
                 transparency *= trans;
 
                 if (transparency < 0.03)
