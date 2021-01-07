@@ -176,15 +176,10 @@ namespace TerraFX.Samples.Graphics
                 var texture1DRegion = texture1D.Allocate(texture1D.Size, alignment: 4);
                 var pTextureData = textureStagingBuffer.Map<uint>(in texture1DRegion);
 
-                for (uint n = 0; n < _params.IntensityToRgba.Length; n++)
+                for (uint n = 0; n < texturePixels; n++)
                 {
                     var texel = _params.IntensityToRgba[n];
-                    pTextureData[n] = texel;
-                    //pTextureData[n]
-                    //    = 0 << 0       // r
-                    //    | texel << 8   // g
-                    //    | texel << 16  // b
-                    //    | texel << 24; // a
+                    pTextureData[n] = texel; // RGBA as least significant byte to most significant byte, i.e. r<<0 ... a<<24
                 }
                 textureStagingBuffer.UnmapAndWrite(in texture1DRegion);
                 graphicsContext.Copy(texture1D, textureStagingBuffer);
@@ -200,7 +195,8 @@ namespace TerraFX.Samples.Graphics
                 var textureHeight = _params.IntensityTexDims[1];
                 var textureDepth = _params.IntensityTexDims[2];
 
-                var texture3D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.ThreeDimensional, GraphicsResourceCpuAccess.None, textureWidth, textureHeight, (ushort)textureDepth, texelFormat: TexelFormat.R8G8B8A8_UNORM);
+                var texelFormat = TexelFormat.R8G8B8A8_UNORM;
+                var texture3D = graphicsContext.Device.MemoryAllocator.CreateTexture(GraphicsTextureKind.ThreeDimensional, GraphicsResourceCpuAccess.None, textureWidth, textureHeight, (ushort)textureDepth, texelFormat: texelFormat);
                 var texture3DRegion = texture3D.Allocate(texture3D.Size, alignment: 4);
                 var pTextureData = textureStagingBuffer.Map<uint>(in texture3DRegion);
 

@@ -17,11 +17,11 @@ using System.Linq;
 
 public class RenderParams
 {
-    private string _vrgFolder = "C:/projects/ClaroNav/Vrg/";
-    private U32[] _intensityTexDims;
-    private Vector3 _intensityTexSpacingMm;
-    private U8[] _intensityTexure3d;
-    private U32[] _intensityToRgba;
+    private readonly string _vrgFolder = "C:/projects/ClaroNav/Vrg/";
+    private readonly U32[] _intensityTexDims;
+    private readonly Vector3 _intensityTexSpacingMm;
+    private readonly U8[] _intensityTexure3d;
+    private readonly U32[] _intensityToRgba;
 
     public U32[] IntensityTexDims => _intensityTexDims;
     public Vector3 IntensityTexSpacingMm => _intensityTexSpacingMm;
@@ -58,12 +58,12 @@ public class RenderParams
             }
             voxels = new U8[256 * 256 * 256]; // dims[0] * dims[1] * dims[2]];
             //int i = 0;
-            U32 xA = dims[0] / 2 - 127;
-            U32 xB = dims[0] / 2 + 128;
-            U32 yA = dims[1] / 2 - 127;
-            U32 yB = dims[1] / 2 + 128;
-            U32 zA = dims[2] / 2 - 127 + 4; //shift up FOV
-            U32 zB = dims[2] / 2 + 128 + 4;
+            var xA = (dims[0] / 2) - 127;
+            var xB = (dims[0] / 2) + 128;
+            var yA = (dims[1] / 2) - 127;
+            var yB = (dims[1] / 2) + 128;
+            var zA = (dims[2] / 2) - 127 + 4; //shift up FOV
+            var zB = (dims[2] / 2) + 128 + 4;
 
             // write the XYZ=LPH SliceStack data into the XYZ=LFP texture (y and z swap position, y also swaps direction)
             for (var z = 0; z < dims[2]; z++)
