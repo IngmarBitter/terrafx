@@ -14,6 +14,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using TerraFX.Interop;
 
 public class RenderParams
 {
@@ -30,12 +31,12 @@ public class RenderParams
 
     public RenderParams(string ctFilePathAndName, string intensityToRgbaPathAndName)
     {
-        (_intensityTexDims, _intensityTexSpacingMm, _intensityTexure3d) = CtLoad(ctFilePathAndName);
+        (_intensityTexDims, _intensityTexSpacingMm, _intensityTexure3d) = CtLoadFull(ctFilePathAndName);
         _intensityToRgba = LookupTableCreate(intensityToRgbaPathAndName);
         //_intensityToRgba = LookupTableCreate(-1000, 1500); // ramp, no file needed
     }
 
-    private (U32[] dims, Vector3 spacingMm, U8[] voxels) CtLoad(string filePathAndName)
+    private (U32[] dims, Vector3 spacingMm, U8[] voxels) CtLoad256x3(string filePathAndName)
     {
         if (!File.Exists(filePathAndName))
         {
@@ -47,6 +48,7 @@ public class RenderParams
 
         using (var binaryReader = new BinaryReader(System.IO.File.Open(filePathAndName, System.IO.FileMode.Open)))
         {
+            // LPH oriented data on disk
             {
                 dims[0] = (U32)binaryReader.ReadSingle();
                 dims[1] = (U32)binaryReader.ReadSingle();
@@ -56,14 +58,20 @@ public class RenderParams
                 var z = binaryReader.ReadSingle();
                 spacingMm = new Vector3(x, y, z);
             }
-            voxels = new U8[256 * 256 * 256]; // dims[0] * dims[1] * dims[2]];
-            //int i = 0;
-            var xA = (dims[0] / 2) - 127;
-            var xB = (dims[0] / 2) + 128;
-            var yA = (dims[1] / 2) - 127;
-            var yB = (dims[1] / 2) + 128;
-            var zA = (dims[2] / 2) - 127 + 4; //shift up FOV
-            var zB = (dims[2] / 2) + 128 + 4;
+            // texture (w)idth, (h)eight, (d)epth
+            var w = 256u;
+            var h = 256u;
+            var d = 256u;
+            voxels = new U8[w * h * d];
+            var dh = w;
+            var dd = w * h;
+            var hMax = h - 1;
+            var xA = (dims[0] / 2) - ((w / 2) - 1);
+            var xB = (dims[0] / 2) + (w / 2);
+            var yA = (dims[1] / 3) - ((d / 2) - 1);
+            var yB = (dims[1] / 3) + (d / 2);
+            var zA = (dims[2] / 3) - ((h / 2) - 1);
+            var zB = (dims[2] / 3) + (h / 2);
 
             // write the XYZ=LPH SliceStack data into the XYZ=LFP texture (y and z swap position, y also swaps direction)
             for (var z = 0; z < dims[2]; z++)
@@ -82,16 +90,86 @@ public class RenderParams
                             {
                                 voxel = (I16)(300 * coordSum);
                             }
-                            voxels[x - xA + (256 * (255 - (z - zA))) + (256 * 256 * (y - yA))] = VoxelI16toU8(voxel);
+                            voxels[x - xA + (dh * (hMax - (z - zA))) + (dd * (y - yA))] = VoxelI16toU8(voxel);
                         }
                     }
                 }
             }
-
             binaryReader.Close();
-            dims[0] = 256;
-            dims[1] = 256;
-            dims[2] = 256;
+
+            // swap the dims for y and z to reflect the new coordinate system meaning
+            dims[0] = w;
+            dims[1] = h;
+            dims[2] = d;
+        }
+        return (dims, spacingMm, voxels);
+    }
+
+    private (U32[] dims, Vector3 spacingMm, U8[] voxels) CtLoadFull(string filePathAndName)
+    {
+        if (!File.Exists(filePathAndName))
+        {
+            filePathAndName = _vrgFolder + filePathAndName.Split('/').Last();
+        }
+        var dims = new U32[3];
+        var spacingMm = new Vector3();
+        U8[] voxels;
+
+        using (var binaryReader = new BinaryReader(System.IO.File.Open(filePathAndName, System.IO.FileMode.Open)))
+        {
+            // LPH oriented data on disk
+            {
+                dims[0] = (U32)binaryReader.ReadSingle();
+                dims[1] = (U32)binaryReader.ReadSingle();
+                dims[2] = (U32)binaryReader.ReadSingle();
+                var x = binaryReader.ReadSingle();
+                var y = binaryReader.ReadSingle();
+                var z = binaryReader.ReadSingle();
+                spacingMm = new Vector3(x, y, z);
+            }
+            // texture (w)idth, (h)eight, (d)epth
+            var w = 256u;
+            var h = 280u;
+            var d = 256u;
+            voxels = new U8[w * h * d];
+            var dh = w;
+            var dd = w * h;
+            var hMax = h - 1;
+            var xA = (dims[0] / 2) - ((w / 2) - 1);
+            var xB = (dims[0] / 2) + (w / 2);
+            var yA = (dims[1] / 3) - ((d / 2) - 1);
+            var yB = (dims[1] / 3) + (d / 2);
+            var zA = (dims[2] / 3) - ((h / 2) - 1);
+            var zB = (dims[2] / 3) + (h / 2);
+
+            // write the XYZ=LPH SliceStack data into the XYZ=LFP texture (y and z swap position, y also swaps direction)
+            for (var z = 0; z < dims[2]; z++)
+            {
+                for (var y = 0; y < dims[1]; y++)
+                {
+                    for (var x = 0; x < dims[0]; x++)
+                    {
+                        var voxel = binaryReader.ReadInt16();
+                        if (x >= xA && x <= xB &&
+                            y >= yA && y <= yB &&
+                            z >= zA && z <= zB)
+                        {
+                            var coordSum = x - xA + (y - yA) + (z - zA);
+                            if (coordSum < 20)
+                            {
+                                voxel = (I16)(300 * coordSum);
+                            }
+                            voxels[x - xA + (dh * (hMax - (z - zA))) + (dd * (y - yA))] = VoxelI16toU8(voxel);
+                        }
+                    }
+                }
+            }
+            binaryReader.Close();
+
+            // swap the dims for y and z to reflect the new coordinate system meaning
+            dims[0] = w;
+            dims[1] = h;
+            dims[2] = d;
         }
         return (dims, spacingMm, voxels);
     }

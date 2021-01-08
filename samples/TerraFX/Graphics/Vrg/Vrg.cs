@@ -32,7 +32,8 @@ namespace TerraFX.Samples.Graphics
             : base(name, compositionAssemblies)
         {
             _params = new RenderParams(
-                "D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.322,322,264.0.5,0.5,0.5.linear",
+                //"D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.322,322,264.0.5,0.5,0.5.linear",
+                "D:/ds/Navident/ds/cvcv/cipi/ss.cipi.ba.ba.536,536,440.0.3,0.3,0.3.linear",
                 "D:/projects/ClaroNav/Vrg/argbLut.CT_Bones_Dental.rgba");
         }
 
