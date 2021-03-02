@@ -3,7 +3,7 @@ using System.Reflection;
 using TerraFX.ApplicationModel;
 using TerraFX.Graphics;
 using TerraFX.Numerics;
-using static TerraFX.Utilities.InteropUtilities;
+using static TerraFX.Utilities.UnsafeUtilities;
 
 using Ptr = System.IntPtr;
 using U16 = System.UInt16;
